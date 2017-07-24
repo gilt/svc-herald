@@ -1,0 +1,178 @@
+<script type="text/template" id="events">
+    <div class="panel panel-primary">
+
+        <div class="panel-heading clearfix">
+            <h3 class="panel-title pull-left" style="padding-top: 7.5px;"><i class="fa fa-calendar" aria-hidden="true"></i> Events</h3>
+            <div class="btn-group pull-left" style="margin-left: 20px;">
+                <button id="add-event-btn" type="button" class="btn btn-success btn-sm" aria-label="Left Align">
+                    <i class="fa fa-calendar-plus-o" aria-hidden="true"></i> Add Event
+                </button>
+            </div>
+            <div class="btn-group pull-right">
+                <button id="refresh-events-btn" type="button" class="btn btn-success btn-sm" aria-label="Right Align">
+                    <i class="fa fa-refresh" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        <div class="panel-body">
+
+        <% if (this.collection && this.collection.length) { %>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="text-center">Name</th>
+                        <th class="text-center">Start</th>
+                        <th class="text-center">Duration</th>
+                        <th class="text-center">Recurrence</th>
+                        <th class="text-center">Affected</th>
+                        <th class="text-center">Scale</th>
+                        <th class="text-center">Active</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                <% _.each(this.collection.models, function(event, idx) { %>
+                    <tr class="text-center">
+                        <td><%= event.get('name') %></td>
+                        <td><span title="<%= event.get('start') %>"><%= event.humaniseStart() %></span></td>
+                        <td><%= event.durations[event.get('duration')] %></td>
+                        <td><%= event.get('recurrence') %></td>
+                        <td>
+                          <% if(_.includes(event.get('affected'), 'web')) { %>
+                            <i class="fa fa-laptop" aria-hidden="true" title="web"></i>
+                          <% } 
+                             if(_.includes(event.get('affected'), 'mobile')) { %>
+                            <i class="fa fa-mobile" aria-hidden="true" title="mobile"></i>
+                          <% } %>
+                        </td>
+                        <td><%= event.get('scale') %></td>
+                        <td>
+                          <% if(event.get('active')) { %>
+                            <i class="fa fa-check" aria-hidden="true" title="enabled"></i>
+                          <% } %>
+                        </td>
+                        <td class="text-center" data-target="<%= event.id %>">
+                          <div class="btn-group">
+                            <button type="button" class="btn btn-default btn-xs edit-event-btn" aria-label="Left Align" data-toggle="collapse">
+                              <i class="fa fa-edit" aria-hidden="true" title="Edit Event"></i>
+                            </button>
+                          </div>
+                          <div class="btn-group">
+                            <button type="button" class="btn btn-default btn-xs copy-event-btn" aria-label="Left Align" data-toggle="collapse">
+                              <i class="fa fa-copy" aria-hidden="true" title="Copy Event"></i>
+                            </button>
+                          </div>
+                          <div class="btn-group">
+                            <button type="button" class="btn btn-danger btn-xs remove-event-btn" aria-label="Left Align">
+                              <i class="fa fa-remove" aria-hidden="true" title="Remove Event"></i>
+                            </button>
+                          </div>
+                        </td>
+                    </tr>
+                <% }); %>
+
+                </tbody>
+            </table>
+        <%  } else { %>
+            <span>No events available.</span>
+        <%  } %>
+
+        </div>
+    </div>
+</script>
+
+<script type="text/template" id="event">
+    <div class="modal fade" id="event-modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title"><% if (this.model.isNew()) { %>Add Event<% } else { %>Update Event<% } %></h4>
+                </div>
+                <div id="event-alert"></div>
+                <form class="form-horizontal">
+                  <div class="modal-body">
+                    <% if (!this.model.isNew()) { %>
+                      <div class="form-group">
+                        <label for="event-id" class="col-sm-2 control-label">Event ID</label>
+                        <div class="col-sm-8">
+                          <input id="event-id" type="text" class="form-control" readonly data-bind="value:id,events:['keyup']">
+                        </div>
+                      </div>
+                    <% } %>
+                    <div class="form-group">
+                      <label for="event-name" class="col-sm-2 control-label">Name</label>
+                      <div class="col-sm-8">
+                        <input id="event-name" type="text" class="form-control" data-bind="value:name,events:['keyup']">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="event-start" class="col-sm-2 control-label">Start</label>
+                      <div class="col-sm-5">
+                        <div class="input-group date" id="event-start-datetimepicker">
+                          <input id="event-start" type="text" class="form-control" data-bind="value:start,events:['blur']" />
+                          <span class="input-group-addon">
+                            <span class="glyphicon glyphicon-calendar"></span>
+                          </span>
+                        </div>
+                      </div>
+                      <div class="col-sm-3">
+                         <select id="event-timezone" class="selectpicker">
+                           <% var zone = this.model.getStartZone(); _.each(this.model.zones, function(label, z) { %>
+                             <option value="<%= z %>" <% if (zone === z) { %>selected<% } %>><%= label %></option>
+                           <% }); %>
+                         </select>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="event-duration" class="col-sm-2 control-label">Duration</label>
+                      <div class="col-sm-8">
+                        <select id="event-duration" class="selectpicker" data-bind="value:duration">
+                          <% _.each(this.model.durations, function(label, d) { %>
+                            <option value="<%= d %>"><%= label %></option>
+                          <% }); %>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="event-recurrence" class="col-sm-2 control-label">Recurrence</label>
+                      <div class="col-sm-8">
+                        <select id="event-recurrence" class="selectpicker" data-bind="value:recurrence">
+                          <option>none</option>
+                          <option>daily</option>
+                          <option>weekly</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="event-affected" class="col-sm-2 control-label">Affected</label>
+                      <div class="col-sm-8">
+                        <select id="event-affected" class="selectpicker" data-bind="value:affected" multiple>
+                          <option data-icon="fa-laptop">web</option>
+                          <option data-icon="fa-mobile">mobile</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="event-scale" class="col-sm-2 control-label">Scale</label>
+                      <div class="col-sm-8">
+                        <input id="event-scale" type="number" class="form-control" data-bind="value:scale,events:['keyup']">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label for="event-active" class="col-sm-2 control-label">Active</label>
+                      <div class="col-sm-8">
+                        <input id="event-active" type="checkbox" data-bind="checked:active">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button id="event-submit" type="button" class="btn btn-success">Submit</button>
+                  </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</script>
