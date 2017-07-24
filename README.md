@@ -23,6 +23,7 @@ specified in the src/svc_herald/configuration.clj.
 ### Storage
 
 There are 2 possible backends for the storage:
+
   - Memory
   - S3
 
